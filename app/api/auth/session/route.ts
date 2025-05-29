@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { verify } from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
-import prisma from '@/app/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
           email: true,
           name: true,
           role: true,
+          isAdmin: true,
         },
       });
 
@@ -40,9 +41,14 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Kullanıcı bilgilerini döndür
+      // Kullanıcı bilgilerini döndür - isAdmin alanını da ekle
+      const userData = {
+        ...user,
+        isAdmin: user.isAdmin || user.role === 'ADMIN'
+      };
+
       return NextResponse.json(
-        { user, isAuthenticated: true }, 
+        { user: userData, isAuthenticated: true }, 
         { 
           status: 200,
           headers: {

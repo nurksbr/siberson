@@ -158,23 +158,24 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Check email verification
-        if (!user.isEmailVerified) {
-          console.log('API: User email not verified');
-          return new NextResponse(
-            JSON.stringify({ 
-              error: 'Please verify your email before logging in. Check your inbox for the verification link.',
-              code: 'EMAIL_NOT_VERIFIED',
-              success: false 
-            }),
-            { 
-              status: 403,
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            }
-          );
-        }
+        // E-posta doğrulama kontrolünü kaldırdık - tüm kullanıcılar giriş yapabilir
+        // Check email verification - DISABLED for existing users
+        // if (!user.isEmailVerified) {
+        //   console.log('API: User email not verified');
+        //   return new NextResponse(
+        //     JSON.stringify({ 
+        //       error: 'Please verify your email before logging in. Check your inbox for the verification link.',
+        //       code: 'EMAIL_NOT_VERIFIED',
+        //       success: false 
+        //     }),
+        //     { 
+        //       status: 403,
+        //       headers: {
+        //         'Content-Type': 'application/json'
+        //       }
+        //     }
+        //   );
+        // }
 
         console.log('API: Database user authenticated successfully');
         

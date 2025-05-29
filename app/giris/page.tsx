@@ -3,13 +3,13 @@
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
-import { signIn } from 'next-auth/react'
+import { useAuth } from '../context/AuthContext'
 
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams?.get('callbackUrl') || '/'
+  const { login, loading } = useAuth()
   
   const [formData, setFormData] = useState({
     email: '',
@@ -64,30 +64,21 @@ export default function LoginPage() {
     if (!validateForm()) return
     
     setIsLoading(true)
-    console.log('NextAuth ile giriş denemesi başlatılıyor...')
+    console.log('AuthContext ile giriş denemesi başlatılıyor...')
     
     try {
-      const result = await signIn('credentials', {
-        redirect: false,
-        email: formData.email,
-        password: formData.password,
-      })
+      await login(formData.email, formData.password)
+      console.log('Giriş başarılı, yönlendiriliyor...')
+      setLoginSuccess(true)
       
-      if (result?.error) {
-        console.error('Giriş hatası:', result.error)
-        setLoginError('E-posta veya şifre hatalı. Lütfen tekrar deneyin.')
-      } else {
-        console.log('Giriş başarılı, yönlendiriliyor...')
-        setLoginSuccess(true)
-        
-        // Callback URL'e yönlendir
-        setTimeout(() => {
-          router.push(callbackUrl)
-        }, 1000)
-      }
-    } catch (error) {
+      // AuthContext otomatik olarak yönlendirme yapacak, 
+      // ancak yine de manuel kontrol edelim
+      setTimeout(() => {
+        router.push(callbackUrl)
+      }, 1000)
+    } catch (error: any) {
       console.error('Giriş işlemi sırasında hata:', error)
-      setLoginError('Giriş işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.')
+      setLoginError(error.message || 'Giriş işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.')
     } finally {
       setIsLoading(false)
     }
@@ -196,10 +187,10 @@ export default function LoginPage() {
             <div>
               <button
                 type="submit"
-                disabled={isLoading}
-                className={`flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                disabled={isLoading || loading}
+                className={`flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 ${isLoading || loading ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                {isLoading ? 'Giriş yapılıyor...' : 'Giriş yap'}
+                {isLoading || loading ? 'Giriş yapılıyor...' : 'Giriş yap'}
               </button>
             </div>
           </form>
@@ -216,7 +207,7 @@ export default function LoginPage() {
 
             <div className="mt-6">
               <Link
-                href="/kayit"
+                href="/uye-ol"
                 className="flex w-full justify-center rounded-md bg-gray-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600"
               >
                 Yeni hesap oluştur
@@ -227,4 +218,4 @@ export default function LoginPage() {
       </div>
     </div>
   )
-}
+} 

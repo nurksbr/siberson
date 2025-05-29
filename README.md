@@ -20,6 +20,7 @@ npm install
 # Geliştirme sunucusunu başlatın
 npm run dev
 ```
+npx prisma studio
 
 Tarayıcınızda [http://localhost:3000](http://localhost:3000) adresini açarak uygulamayı görüntüleyebilirsiniz.
 

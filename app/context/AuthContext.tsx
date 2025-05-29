@@ -167,7 +167,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Kullanıcı giriş yapmış ve bir callback URL varsa, pathname'e bakmaksızın yönlendir
         if (isAuthenticated && callbackUrl && callbackUrl !== pathname) {
-          console.log(`Callback URL'e yönlendiriliyor: ${callbackUrl}`);
           router.push(decodeURIComponent(callbackUrl));
         }
       } catch (error) {
@@ -178,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     checkUserSession();
-  }, [pathname, router, searchParams]);
+  }, [pathname, router, searchParams, user]);
 
   // Kullanıcı oturumunu kontrol et
   const checkAuth = async (): Promise<boolean> => {
@@ -231,7 +230,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearTimeout(timeoutId);
         
         if (!response.ok) {
-          console.error('Oturum doğrulama API hatası:', response.status);
           setUser(null);
           storeUser(null);
           return false;
@@ -242,7 +240,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           data = await response.json();
         } catch (parseError) {
-          console.error('Oturum JSON parse hatası:', parseError);
           setUser(null);
           storeUser(null);
           return false;
@@ -286,10 +283,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Giriş fonksiyonu
   const login = async (email: string, password: string): Promise<void> => {
     setLoading(true);
-    console.log('AuthContext login fonksiyonu başladı');
     try {
-      console.log('API isteği gönderiliyor...');
-      
       // Ağ hatalarını yakalamak için try-catch
       try {
         const response = await fetch('/api/auth/login', {
@@ -309,7 +303,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Response tipi kontrolü
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
-          console.error('API JSON yanıtı döndürmedi:', contentType);
           throw new Error('Sunucu geçersiz yanıt döndürdü. Lütfen daha sonra tekrar deneyin.');
         }
 
@@ -318,11 +311,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           data = await response.json();
         } catch (parseError) {
-          console.error('JSON parse hatası:', parseError);
           throw new Error('Sunucu yanıtı işlenemedi. Lütfen daha sonra tekrar deneyin.');
         }
-        
-        console.log('API yanıtı alındı:', response.status, data);
 
         if (!response.ok) {
           throw new Error(data.error || 'Giriş yapılırken bir hata oluştu');
@@ -330,7 +320,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Kullanıcı bilgilerini doğrudan yanıttan al
         if (data.user) {
-          console.log('Kullanıcı bilgileri alındı, state güncelleniyor');
           setUser(data.user);
           
           // Kullanıcıyı localStorage'a kaydetme işlemini güçlendirelim
@@ -339,7 +328,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.removeItem(USER_STORAGE_KEY);
             // Sonra yeni kullanıcı bilgilerini kaydet
             localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user));
-            console.log('Kullanıcı bilgileri localStorage\'a kaydedildi', data.user);
             
             // Kullanıcı state'ini güncelle
             storeUser(data.user);
@@ -358,36 +346,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           // Callback URL varsa doğrudan yönlendir, yoksa ana sayfaya
           const callbackUrl = searchParams?.get('callbackUrl');
-          console.log('Callback URL:', callbackUrl);
           
           if (callbackUrl) {
-            console.log(`Callback URL'e yönlendiriliyor: ${callbackUrl}`);
             try {
               router.push(decodeURIComponent(callbackUrl));
             } catch (navigateError) {
-              console.error('Callback yönlendirme hatası:', navigateError);
               // Hata durumunda alternatif olarak window.location kullan
               window.location.href = decodeURIComponent(callbackUrl);
             }
           } else {
             // Ana sayfaya yönlendir
-            console.log('Kullanıcı giriş yaptı, ana sayfaya yönlendiriliyor');
             try {
               router.push('/');
             } catch (navigateError) {
-              console.error('Ana sayfa yönlendirme hatası:', navigateError);
               // Hata durumunda alternatif olarak window.location kullan
               window.location.href = '/';
             }
           }
         } else {
           // Oturum durumunu kontrol et
-          console.log('Kullanıcı bilgisi bulunamadı, checkAuth çağrılıyor');
           await checkAuth();
         }
       } catch (fetchError) {
-        console.error('Fetch hatası:', fetchError);
-        
         // Ağ hatalarını özel olarak işle
         if (fetchError instanceof TypeError && fetchError.message.includes('fetch')) {
           throw new Error('Sunucuya bağlanılamıyor. Lütfen internet bağlantınızı kontrol edin.');
@@ -397,18 +377,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw fetchError;
       }
     } catch (error) {
-      console.error('Login fonksiyonu hatası:', error);
       throw error;
     } finally {
       setLoading(false);
-      console.log('Login fonksiyonu tamamlandı, loading:', false);
     }
   };
 
   // Çıkış işlemi
   const logout = async (): Promise<void> => {
     setLoading(true);
-    console.log('AuthContext: logout fonksiyonu başladı');
     
     try {
       // LocalStorage temizliği - bu kısmı async/await dışında tut ki hızlıca çalışsın
@@ -421,21 +398,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Cookie'yi doğrudan temizle - ekstra önlem
         document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        console.log('AuthContext: LocalStorage ve cookie temizlendi');
         
         // Olay yayınla - hızlı güncelleme için
         const authEvent = new CustomEvent(AUTH_CHANGE_EVENT, { 
           detail: { user: null, loggedIn: false } 
         });
         window.dispatchEvent(authEvent);
-        console.log('AuthContext: AUTH_CHANGE_EVENT tetiklendi');
         
         // Giriş sayfasına yönlendirme
         try {
-          console.log('AuthContext: Giriş sayfasına yönlendiriliyor');
           router.push('/giris');
         } catch (routerError) {
-          console.error('Router yönlendirme hatası:', routerError);
           window.location.href = '/giris';
         }
       }
@@ -445,7 +418,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       try {
         // API üzerinden çıkış işlemi - token cookie'sini temizler
-        console.log('AuthContext: API üzerinden çıkış yapılıyor');
         const response = await fetch('/api/auth/logout', {
           method: 'POST',
           headers: {
@@ -453,15 +425,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           },
           credentials: 'include',
         });
-        console.log('AuthContext: API çıkış yanıtı alındı', response.status);
       } catch (apiError) {
-        console.error('Logout API hatası:', apiError);
         // API hatası olsa bile kullanıcı çıkış yapmış olacak
       }
-      
-      console.log('AuthContext: logout işlemi başarıyla tamamlandı');
     } catch (error) {
-      console.error('Çıkış yapılırken hata:', error);
       // Hata durumunda da temizlik yapalım
       setUser(null);
       storeUser(null);
@@ -476,7 +443,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } finally {
       setLoading(false);
-      console.log('AuthContext: logout işlemi tamamlandı');
     }
   };
 

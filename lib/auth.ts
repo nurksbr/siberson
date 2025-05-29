@@ -1,11 +1,9 @@
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from '@/lib/prisma'
 import { compare } from 'bcrypt'
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 gün
@@ -40,9 +38,8 @@ export const authOptions: NextAuthOptions = {
             throw new Error('Kullanıcı bulunamadı')
           }
 
-          if (user.isEmailVerified === false) {
-            throw new Error('E-posta adresiniz doğrulanmamış. Lütfen e-postanızı kontrol edin ve hesabınızı doğrulayın.')
-          }
+          // E-posta doğrulama kontrolünü kaldırdık - artık tüm kullanıcılar giriş yapabilir
+          // Gelecekte yeni kayıt olan kullanıcılar için e-posta doğrulama sistemi ayrı olarak işlenecek
 
           const isPasswordValid = await compare(credentials.password, user.password)
 
@@ -53,8 +50,9 @@ export const authOptions: NextAuthOptions = {
           return {
             id: user.id,
             email: user.email,
-            name: user.name,
-            isAdmin: user.isAdmin
+            name: user.name || user.email.split('@')[0],
+            role: user.role || 'USER',
+            isAdmin: user.isAdmin || false
           }
         } catch (error) {
           console.error('Auth hatası:', error)
@@ -65,10 +63,11 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async session({ token, session }) {
-      if (token) {
+      if (token && session.user) {
         session.user.id = token.id
-        session.user.name = token.name
-        session.user.email = token.email
+        session.user.name = token.name || session.user.email.split('@')[0]
+        session.user.email = token.email || session.user.email
+        session.user.role = token.role
         session.user.isAdmin = token.isAdmin
       }
       return session
@@ -78,33 +77,34 @@ export const authOptions: NextAuthOptions = {
         // Kullanıcı bilgisi varsa token'a ekle
         if (user) {
           token.id = user.id
+          token.role = user.role
           token.isAdmin = user.isAdmin
           return token
         }
 
         // Eğer yeni oturum değilse token'ı güncellemeye gerek yok
-        if (Date.now() < ((token.exp as number) * 1000) - 5 * 60 * 1000) {
+        if (token.exp && typeof token.exp === 'number' && Date.now() < (token.exp * 1000) - 5 * 60 * 1000) {
           return token
         }
 
         // Token süresi dolmak üzere, veritabanından kullanıcı bilgilerini yenile
-        const dbUser = await prisma.user.findFirst({
-          where: {
-            email: token.email!
+        if (token.email) {
+          const dbUser = await prisma.user.findFirst({
+            where: {
+              email: token.email
+            }
+          })
+
+          if (dbUser) {
+            token.id = dbUser.id
+            token.name = dbUser.name || dbUser.email.split('@')[0]
+            token.email = dbUser.email
+            token.role = dbUser.role || 'USER'
+            token.isAdmin = dbUser.isAdmin || false
           }
-        })
-
-        if (!dbUser) {
-          return token
         }
 
-        return {
-          id: dbUser.id,
-          name: dbUser.name,
-          email: dbUser.email,
-          isAdmin: dbUser.isAdmin,
-          exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 gün sonra süre dolacak
-        }
+        return token
       } catch (error) {
         console.error('JWT callback hatası:', error)
         return token

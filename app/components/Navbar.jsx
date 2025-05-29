@@ -49,6 +49,18 @@ function Navbar() {
   
   const router = useRouter();
   
+  // Debug bilgisi için console.log - sadece durum değişimlerinde
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && isMounted) {
+      // Sadece durumlar gerçekten değiştiğinde log yap
+      const logKey = `${isLoggedIn}-${!!user}-${!!localUser}`;
+      if (window.lastNavbarState !== logKey) {
+        console.log('Navbar durum değişikliği - isLoggedIn:', isLoggedIn, 'user:', !!user, 'localUser:', !!localUser);
+        window.lastNavbarState = logKey;
+      }
+    }
+  }, [isLoggedIn, user, localUser, isMounted]);
+  
   // Aktif link kontrolü için gelişmiş fonksiyon
   const isLinkActive = (path) => {
     if (!pathname) return false;
@@ -69,17 +81,13 @@ function Navbar() {
     if (typeof window !== 'undefined') {
       try {
         const storedUser = localStorage.getItem('cyberly_user');
-        // Gereksiz logları kaldır
-        // console.log('Navbar: localStorage kontrolü', !!storedUser, storedUser ? JSON.parse(storedUser) : null);
         
         if (storedUser) {
           const userData = JSON.parse(storedUser);
           setLocalUser(userData);
           setIsLoggedIn(true);
-          // console.log('Navbar: Kullanıcı giriş yapmış, isLoggedIn=true');
         } else {
           setIsLoggedIn(false);
-          // console.log('Navbar: Kullanıcı giriş yapmamış, isLoggedIn=false');
         }
       } catch (error) {
         console.error('Navbar: LocalStorage kontrolü sırasında hata:', error);
@@ -101,12 +109,11 @@ function Navbar() {
     }
   };
   
-  // Özel oturum değişikliği olayını dinle
+  // Özel oturum değişikliği olayını dinle - bileşen mount olduktan sonra bir kez çalışacak şekilde
   useEffect(() => {
     if (!isMounted) return;
     
     const handleAuthChange = (event) => {
-      // console.log('Navbar: Auth değişiklik olayı alındı', event.detail);
       const { user: authUser, loggedIn } = event.detail;
       
       // Önbelleğe alınmış kullanıcıyla karşılaştır
@@ -125,7 +132,6 @@ function Navbar() {
         }
         
         setLocalUser(authUser);
-        forceUpdate();
       }
     };
     
@@ -149,7 +155,6 @@ function Navbar() {
         const isAuth = await checkAuth();
         if (mounted) {
           if (isAuth !== isLoggedIn) {
-            // Log mesajını kaldıralım
             setIsLoggedIn(isAuth);
           }
         }
@@ -159,46 +164,52 @@ function Navbar() {
     };
     
     // Biraz gecikme ile kontrol et
-    if (typeof window !== 'undefined') {
-      setTimeout(verifyOnce, 500);
-    }
+    const timeoutId = setTimeout(verifyOnce, 500);
     
     return () => {
       mounted = false;
+      clearTimeout(timeoutId);
     };
   }, [isLoggedIn, checkAuth, isMounted]);
 
-  // User değişikliklerini izle
+  // User değişikliklerini izle - gereksiz render önlemek için memoized karşılaştırma
   useEffect(() => {
+    // Auth context'ten gelen user bilgisini öncelikli olarak kullan
     if (user) {
-      // Önceki state ile karşılaştır
-      const prevUserStr = JSON.stringify(localUser);
-      const currentUserStr = JSON.stringify(user);
-      
-      // Sadece değişiklik varsa güncelle ve log yap
-      if (prevUserStr !== currentUserStr) {
-        // console.log('Navbar: useAuth hook kullanıcı değişikliği algılandı', user);
-        setIsLoggedIn(true);
-        setLocalUser(user);
-      }
+      // Kullanıcı var, giriş yapmış
+      setIsLoggedIn(true);
+      setLocalUser(user);
+    } else if (!user && !loading) {
+      // Kullanıcı yok ve loading tamamlandı, çıkış yapmış
+      setIsLoggedIn(false);
+      setLocalUser(null);
     }
-  }, [user, localUser]);
+  }, [user, loading]);
 
-  // Görüntülenecek kullanıcı bilgisi
+  // Görüntülenecek kullanıcı bilgisi - öncelik sırası: user (context) > localUser > localStorage
   const currentUser = user || localUser;
 
-  // Link prefetching için - sayfa yüklendiğinde en sık ziyaret edilen sayfaları önceden yükle
+  // Mount sonrası kullanıcı durumunu kontrol et
   useEffect(() => {
-    // Next.js'in kendi prefetch mekanizmasını kullanıyoruz,
-    // bu nedenle manuel preload linkleri kaldırıyoruz
-    // preload link mekanizması uyarılara neden olduğu için kaldırıyoruz
-  }, [pathname])
+    if (!isMounted || loading) return;
+    
+    // Auth context'ten user bilgisi gelmediyse localStorage'ı kontrol et
+    if (!user) {
+      const storedUser = checkLocalStorage();
+      if (storedUser) {
+        setLocalUser(storedUser);
+        setIsLoggedIn(true);
+      } else {
+        setIsLoggedIn(false);
+        setLocalUser(null);
+      }
+    }
+  }, [isMounted, user, loading]);
 
   // Önceki useEffect yerine pathname değişkeninin logging'i için bir kullanım ekleyelim
   useEffect(() => {
-    if (isMounted && process.env.NODE_ENV === 'development') {
-      console.log('Navbar: Mevcut pathname değeri:', pathname);
-    }
+    // Dev modunda pathname değişimini izle
+    // İptal edildi - gereksiz konsol çıktısı
   }, [pathname, isMounted]);
 
   const scrollToContact = (e) => {
@@ -212,8 +223,6 @@ function Navbar() {
 
   const handleLogout = async () => {
     try {
-      console.log('Navbar: Oturum kapatma işlemi başlatıldı');
-      
       // UI durumunu hemen güncelle
       setIsMenuOpen(false);
       setIsLoggedIn(false);
@@ -249,14 +258,11 @@ function Navbar() {
       try {
         // Auth context üzerinden çıkış işlemi
         await logout();
-        console.log('Navbar: Context logout işlemi başarıyla tamamlandı');
       } catch (apiError) {
-        console.error('Navbar: Context logout işleminde hata -', apiError.message);
         // API hatası olsa bile kullanıcı çıkış yapmış olacak
       }
       
       // Tamamen sayfayı yeniden yükleyerek giriş sayfasına yönlendir
-      console.log('Navbar: Oturum başarıyla kapatıldı, giriş sayfasına yönlendiriliyor...');
       window.location.href = '/giris?fresh=' + new Date().getTime();
     } catch (error) {
       console.error('Navbar: Oturum kapatma işleminde hata -', error.message);
@@ -533,8 +539,6 @@ function Navbar() {
                     className="flex items-center w-full text-left px-2 py-1 rounded-md text-sm font-semibold text-red-400 hover:bg-gray-800/30 transition-colors"
                     onClick={(e) => {
                       e.preventDefault();
-                      console.log('Navbar Mobil: Oturum kapatma butonuna tıklandı');
-                      
                       // Merkezi oturum kapatma fonksiyonunu çağır
                       handleLogout();
                     }}
