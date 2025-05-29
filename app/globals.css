@@ -145,3 +145,38 @@ body {
 .blog-content > *:nth-child(n+6) { animation-delay: 0.6s; }
 
 /* Diğer global stiller buraya */
+
+/* Admin Panel Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(31, 41, 55, 0.5);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #06b6d4, #0891b2);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #0891b2, #0e7490);
+}
+
+/* Firefox için custom scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #06b6d4 rgba(31, 41, 55, 0.5);
+}
+
+/* Hover efektleri için geçiş renkleri */
+.hover\:bg-gray-750:hover {
+  background-color: #374151;
+}
+
+/* Admin panel için ek renk tanımları */
+.bg-gray-750 {
+  background-color: #374151;
+}

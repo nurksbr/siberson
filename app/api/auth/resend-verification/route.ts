@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Generate new verification token
-    const verificationData = generateVerificationToken(24); // 24 hours validity
+    const verificationData = generateVerificationToken(72); // 72 hours validity
     
     try {
       // Update user with new verification token

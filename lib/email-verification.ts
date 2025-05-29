@@ -9,10 +9,10 @@ export interface VerificationToken {
 
 /**
  * Güvenli doğrulama token'ı oluşturur
- * @param expirationHours Token'ın geçerli olacağı saat sayısı (varsayılan: 24)
+ * @param expirationHours Token'ın geçerli olacağı saat sayısı (varsayılan: 72)
  * @returns Token bilgileri
  */
-export function generateVerificationToken(expirationHours: number = 24): VerificationToken {
+export function generateVerificationToken(expirationHours: number = 72): VerificationToken {
   // 32 byte rastgele token oluştur
   const token = randomBytes(32).toString('hex');
   
@@ -37,8 +37,32 @@ export function generateVerificationToken(expirationHours: number = 24): Verific
  * @returns Token geçerli mi?
  */
 export function verifyToken(token: string, hashedToken: string): boolean {
-  const inputHash = createHash('sha256').update(token).digest('hex');
-  return inputHash === hashedToken;
+  if (!token || !hashedToken) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Token veya hashedToken eksik');
+    }
+    return false;
+  }
+  
+  try {
+    const inputHash = createHash('sha256').update(token).digest('hex');
+    const isValid = inputHash === hashedToken;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Token doğrulama:', { 
+        tokenLength: token.length, 
+        hashedTokenLength: hashedToken.length,
+        isValid,
+        inputHashSample: inputHash.substring(0, 10) + '...',
+        storedHashSample: hashedToken.substring(0, 10) + '...'
+      });
+    }
+    
+    return isValid;
+  } catch (error) {
+    console.error('Token doğrulama hatası:', error);
+    return false;
+  }
 }
 
 /**
@@ -89,7 +113,7 @@ export async function sendModernVerificationEmail(
       
       <div style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 12px; padding: 20px; margin: 30px 0; border-left: 4px solid #06b6d4;">
         <p style="color: #334155; margin: 0 0 15px 0; font-size: 14px; font-weight: 500;">
-          🔐 <strong>Güvenlik Önemli:</strong> Bu link sadece size özeldir ve 24 saat geçerlidir.
+          🔐 <strong>Güvenlik Önemli:</strong> Bu link sadece size özeldir ve 72 saat geçerlidir.
         </p>
         <p style="color: #64748b; margin: 0; font-size: 13px;">
           Bu işlemi siz yapmadıysanız, bu e-postayı güvenle görmezden gelebilirsiniz.

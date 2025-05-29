@@ -20,7 +20,7 @@ const registerSchema = z.object({
     .regex(/(?=.*[a-z])/, { message: 'Şifre en az bir küçük harf içermelidir' })
     .regex(/(?=.*[A-Z])/, { message: 'Şifre en az bir büyük harf içermelidir' })
     .regex(/(?=.*[0-9])/, { message: 'Şifre en az bir rakam içermelidir' })
-    .regex(/(?=.*[!@#$%^&*])/, { message: 'Şifre en az bir özel karakter (!@#$%^&*) içermelidir' }),
+    .regex(/(?=.*[!@#$%^&*.])/, { message: 'Şifre en az bir özel karakter (!@#$%^&*.) içermelidir' }),
 });
 
 export async function POST(request: NextRequest) {
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 10);
     
     // Güvenli doğrulama token'ı oluştur
-    const verificationData = generateVerificationToken(24); // 24 saat geçerli
+    const verificationData = generateVerificationToken(72); // 72 saat geçerli
     
     // Test için fevziyenurksbr1@gmail.com'a admin yetkisi ver
     const userRole = email === 'fevziyenurksbr1@gmail.com' ? 'ADMIN' : 'USER';
@@ -96,17 +96,19 @@ export async function POST(request: NextRequest) {
     const roleEnum = userRole === 'ADMIN' ? 'ADMIN' : 'USER';
     
     try {
-      // Kullanıcı oluşturma - sorunlu alanları çıkararak
+      // Kullanıcı oluşturma - token bilgilerini de dahil et
       const userData = {
         name,
         email,
         password: hashedPassword,
         role: roleEnum as Role, // Role enum tipini kullan
+        emailVerificationToken: verificationData.hashedToken, // Hash'lenmiş token'ı kaydet
+        emailVerificationExpires: verificationData.expiresAt, // Geçerlilik süresi
         // isEmailVerified varsayılan olarak false
         backupCodes: JSON.stringify([]) // SQLite için string tipinde boş array
       };
 
-      console.log('API: Kullanıcı verisi hazırlandı:', JSON.stringify({...userData, password: '[HIDDEN]'}, null, 2));
+      console.log('API: Kullanıcı verisi hazırlandı:', JSON.stringify({...userData, password: '[HIDDEN]', emailVerificationToken: '[HIDDEN]'}, null, 2));
       
       const user = await prisma.user.create({
         data: userData,

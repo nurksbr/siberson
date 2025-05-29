@@ -6,42 +6,52 @@ export async function GET(request: NextRequest) {
   try {
     // Token tabanlı admin yetki kontrolü
     const authHeader = request.headers.get('authorization')
-    const token = authHeader?.replace('Bearer ', '') || request.cookies.get('auth_token')?.value
+    let token = authHeader?.replace('Bearer ', '')
+    
+    // Eğer header'da token yoksa cookie'den al
+    if (!token) {
+      token = request.cookies.get('auth_token')?.value
+    }
     
     if (!token) {
-      // Cookie'den de token almaya çalış
-      const cookieToken = request.headers.get('cookie')?.match(/auth_token=([^;]+)/)?.[1]
-      if (!cookieToken) {
-        return NextResponse.json(
-          { error: 'Yetkilendirme token\'i bulunamadı' },
-          { status: 401 }
-        )
-      }
+      return NextResponse.json(
+        { error: 'Yetkilendirme token\'i bulunamadı' },
+        { status: 401 }
+      )
     }
 
     let userId: string
     try {
       const decoded = jwt.verify(
-        token || request.headers.get('cookie')?.match(/auth_token=([^;]+)/)?.[1] || '',
-        process.env.JWT_SECRET || 'fallback-secret'
-      ) as { id: string }
-      userId = decoded.id
-    } catch (jwtError) {
+        token,
+        process.env.JWT_SECRET || 'fallback_secret'
+      ) as { userId: string; role?: string }
+      
+      userId = decoded.userId
+      
+      // Admin yetkisi kontrolü
+      if (decoded.role !== 'ADMIN') {
+        return NextResponse.json(
+          { error: 'Admin yetkisi gereklidir' },
+          { status: 403 }
+        )
+      }
+    } catch (error) {
       return NextResponse.json(
         { error: 'Geçersiz token' },
         { status: 401 }
       )
     }
 
-    // Kullanıcıyı kontrol et ve admin yetkisini doğrula
+    // Kullanıcının admin olup olmadığını kontrol et
     const currentUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, role: true, email: true }
+      select: { role: true }
     })
-
+    
     if (!currentUser || currentUser.role !== 'ADMIN') {
       return NextResponse.json(
-        { error: 'Yetkisiz erişim. Admin yetkiniz bulunmuyor.' },
+        { error: 'Bu işlem için admin yetkisi gereklidir' },
         { status: 403 }
       )
     }

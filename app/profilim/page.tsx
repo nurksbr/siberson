@@ -78,7 +78,7 @@ export default function ProfilPage() {
   const [isLoaded, setIsLoaded] = useState(false)
   
   // Demo amaçlı ekstra kullanıcı bilgileri
-  const [userDetails, setUserDetails] = useState({
+  const userDetails = {
     title: 'Siber Güvenlik Uzmanı',
     location: 'İstanbul, Türkiye',
     phone: '+90 555 123 4567',
@@ -102,7 +102,7 @@ export default function ProfilPage() {
       { id: 2, name: 'CompTIA Security+', issuer: 'CompTIA', year: '2020' }
     ],
     skills: ['Ağ Güvenliği', 'Penetrasyon Testleri', 'SIEM', 'Güvenlik Duvarları', 'Linux', 'Python', 'JavaScript']
-  })
+  }
   
   useEffect(() => {
     // Sayfa yüklendiğinde kullanıcı kontrolü

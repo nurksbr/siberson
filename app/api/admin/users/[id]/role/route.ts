@@ -10,26 +10,37 @@ export async function PATCH(
   try {
     // Token tabanlı admin yetki kontrolü
     const authHeader = request.headers.get('authorization')
-    const token = authHeader?.replace('Bearer ', '') || request.cookies.get('auth_token')?.value
+    let token = authHeader?.replace('Bearer ', '')
+    
+    // Eğer header'da token yoksa cookie'den al
+    if (!token) {
+      token = request.cookies.get('auth_token')?.value
+    }
     
     if (!token) {
-      const cookieToken = request.headers.get('cookie')?.match(/auth_token=([^;]+)/)?.[1]
-      if (!cookieToken) {
-        return NextResponse.json(
-          { error: 'Yetkilendirme token\'i bulunamadı' },
-          { status: 401 }
-        )
-      }
+      return NextResponse.json(
+        { error: 'Yetkilendirme token\'i bulunamadı' },
+        { status: 401 }
+      )
     }
 
     let currentUserId: string
     try {
       const decoded = jwt.verify(
-        token || request.headers.get('cookie')?.match(/auth_token=([^;]+)/)?.[1] || '',
-        process.env.JWT_SECRET || 'fallback-secret'
-      ) as { id: string }
-      currentUserId = decoded.id
-    } catch (jwtError) {
+        token,
+        process.env.JWT_SECRET || 'fallback_secret'
+      ) as { userId: string; role?: string }
+      
+      currentUserId = decoded.userId
+      
+      // Admin yetkisi kontrolü
+      if (decoded.role !== 'ADMIN') {
+        return NextResponse.json(
+          { error: 'Admin yetkisi gereklidir' },
+          { status: 403 }
+        )
+      }
+    } catch (error) {
       return NextResponse.json(
         { error: 'Geçersiz token' },
         { status: 401 }

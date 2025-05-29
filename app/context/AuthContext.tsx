@@ -322,6 +322,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data.user) {
           setUser(data.user);
           
+          // Token'ı localStorage'a kaydet
+          if (data.token) {
+            localStorage.setItem('cyberly_token', data.token);
+          }
+          
           // Kullanıcıyı localStorage'a kaydetme işlemini güçlendirelim
           try {
             // Önce localStorage'ı temizle

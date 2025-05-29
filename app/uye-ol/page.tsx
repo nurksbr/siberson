@@ -42,30 +42,47 @@ export default function RegisterPage() {
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {}
     
+    // Ad validasyonu
     if (!formData.name.trim()) {
-      newErrors.name = 'Ad Soyad gereklidir'
+      newErrors.name = 'Ad en az 2 karakter olmalıdır'
+    } else if (formData.name.length < 2) {
+      newErrors.name = 'Ad en az 2 karakter olmalıdır'
+    } else if (formData.name.length > 50) {
+      newErrors.name = 'Ad en fazla 50 karakter olabilir'
+    } else if (!/^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/.test(formData.name)) {
+      newErrors.name = 'Ad sadece harf içerebilir'
     }
     
+    // E-posta validasyonu
     if (!formData.email) {
       newErrors.email = 'E-posta adresi gereklidir'
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Geçerli bir e-posta adresi giriniz'
     }
     
+    // Şifre validasyonu - backend ile uyumlu
     if (!formData.password) {
       newErrors.password = 'Şifre gereklidir'
     } else if (formData.password.length < 8) {
       newErrors.password = 'Şifre en az 8 karakter olmalıdır'
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])/.test(formData.password)) {
-      newErrors.password = 'Şifre en az bir büyük harf, bir küçük harf ve bir rakam içermelidir'
+    } else if (!/(?=.*[a-z])/.test(formData.password)) {
+      newErrors.password = 'Şifre en az bir küçük harf içermelidir'
+    } else if (!/(?=.*[A-Z])/.test(formData.password)) {
+      newErrors.password = 'Şifre en az bir büyük harf içermelidir'
+    } else if (!/(?=.*[0-9])/.test(formData.password)) {
+      newErrors.password = 'Şifre en az bir rakam içermelidir'
+    } else if (!/(?=.*[!@#$%^&*.])/.test(formData.password)) {
+      newErrors.password = 'Şifre en az bir özel karakter (!@#$%^&*.) içermelidir'
     }
     
+    // Şifre tekrarı validasyonu
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = 'Şifrenizi tekrar girin'
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Şifreler eşleşmiyor'
     }
     
+    // Kullanım şartları validasyonu
     if (!formData.agreeTerms) {
       newErrors.agreeTerms = 'Kullanım şartlarını kabul etmelisiniz'
     }
@@ -101,6 +118,25 @@ export default function RegisterPage() {
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           const data = await response.json();
+          
+          // Eğer API'den doğrulama hataları geliyorsa
+          if (data.issues && Array.isArray(data.issues)) {
+            const fieldErrors: {[key: string]: string} = {};
+            data.issues.forEach((issue: any) => {
+              if (issue.path && issue.path.length > 0) {
+                const fieldName = issue.path[0];
+                fieldErrors[fieldName] = issue.message;
+              }
+            });
+            
+            // Form alanı hatalarını güncelle
+            setErrors(fieldErrors);
+            
+            // Genel hata mesajı olarak da göster
+            const firstError = data.issues[0]?.message || 'Form doğrulama hatası';
+            throw new Error(`Doğrulama Hatası: ${firstError}`);
+          }
+          
           throw new Error(data.error || `HTTP hata: ${response.status}`);
         } else {
           // JSON olmayan bir hata yanıtı

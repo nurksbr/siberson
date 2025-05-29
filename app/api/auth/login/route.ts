@@ -78,7 +78,15 @@ const TEST_USERS: TestUser[] = [
     name: 'Genel Kullanıcı',
     password: 'password', // Herkese açık şifre
     role: 'USER'
-  }
+  },
+  {
+    id: 'admin123',
+    email: 'demo@cyberly.com',
+    name: 'Demo Admin',
+    password: 'demo123',
+    role: 'ADMIN',
+    alternatePasswords: ['admin123', 'password', 'demo']
+  },
 ];
 
 export async function POST(request: NextRequest) {
@@ -206,6 +214,7 @@ export async function POST(request: NextRequest) {
           JSON.stringify({ 
             message: 'Successfully logged in', 
             user: userData,
+            token: token,
             success: true
           }),
           { 
@@ -312,6 +321,7 @@ export async function POST(request: NextRequest) {
           JSON.stringify({ 
             message: 'Successfully logged in (Test user)', 
             user: userData,
+            token: token,
             success: true
           }),
           { 

@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import AdminSidebar from '@/components/admin/AdminSidebar'
-import Navbar from '@/components/Navbar'
+import UserMenu from '../../app/components/UserMenu'
+import { FaShieldAlt, FaArrowLeft, FaHome } from 'react-icons/fa'
+import Link from 'next/link'
 
 export default function AdminLayout({
   children
@@ -37,22 +39,66 @@ export default function AdminLayout({
 
   if (loading || status === 'loading') {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-100">
+      <div className="flex justify-center items-center min-h-screen bg-gray-900">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-cyan-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-lg text-gray-700">Yükleniyor...</p>
+          <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-lg text-gray-300">Yükleniyor...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen relative z-20 pointer-events-auto">
+    <div className="flex min-h-screen bg-gray-900 relative z-20 pointer-events-auto">
       <AdminSidebar />
-      <div className="flex-1 flex flex-col">
-        <Navbar />
-        <main className="flex-1 p-8">
-          {children}
+      <div className="flex-1 flex flex-col bg-gray-900">
+        {/* Admin Header */}
+        <header className="bg-gray-800 border-b border-gray-700 shadow-lg backdrop-blur-sm">
+          <div className="flex h-16 items-center justify-between px-6">
+            {/* Logo ve Başlık */}
+            <div className="flex items-center">
+              <Link href="/" className="flex items-center mr-6 hover:opacity-80 transition-opacity">
+                <FaShieldAlt className="h-6 w-6 text-cyan-500" />
+                <span className="ml-2 text-lg font-bold text-white">CYBERLY</span>
+              </Link>
+              
+              {/* Geri Dönme Butonu */}
+              <Link 
+                href="/" 
+                className="flex items-center px-3 py-2 mr-4 bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600/50 hover:border-gray-500/50 rounded-lg transition-all duration-200 group"
+                title="Ana siteye dön"
+              >
+                <FaArrowLeft className="h-4 w-4 text-gray-400 group-hover:text-cyan-400 mr-2 transition-colors" />
+                <FaHome className="h-4 w-4 text-gray-400 group-hover:text-cyan-400 sm:mr-2 transition-colors" />
+                <span className="hidden sm:block text-sm font-medium text-gray-300 group-hover:text-white transition-colors">Ana Siteye Dön</span>
+              </Link>
+              
+              <div className="h-6 w-px bg-gray-600 mr-6"></div>
+              <div className="flex items-center">
+                <h1 className="text-lg font-semibold text-gray-300">Admin Paneli</h1>
+              </div>
+            </div>
+
+            {/* Sağ Taraf - Search ve User Menu */}
+            <div className="flex items-center space-x-4">
+              {/* Admin Badge */}
+              <div className="hidden md:flex items-center px-3 py-1.5 bg-gray-700/50 border border-gray-600/50 rounded-lg">
+                <FaShieldAlt className="h-4 w-4 text-red-400 mr-2" />
+                <span className="text-sm font-medium text-gray-300">Admin Mode</span>
+              </div>
+              
+              {/* Kullanıcı Menüsü */}
+              <div className="flex items-center bg-gray-700/30 rounded-xl p-1">
+                <UserMenu />
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 p-8 bg-gray-900 text-gray-100 min-h-0 overflow-auto">
+          <div className="max-w-full">
+            {children}
+          </div>
         </main>
       </div>
     </div>

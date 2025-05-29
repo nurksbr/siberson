@@ -29,7 +29,7 @@ function MailTestContent() {
   const [content, setContent] = useState('Bu bir test e-postasıdır. Mail sunucusu başarıyla çalışıyor!')
 
   // Basit mail gönderme
-  const sendSimpleTestMail = async () => {
+  const handleSendTestEmail = async () => {
     try {
       setLoading(true)
       setResult(null)
@@ -224,7 +224,7 @@ function MailTestContent() {
             <p className="text-gray-300 mb-4">Varsayılan ayarlarla hızlı bir test maili gönderir.</p>
             
             <button 
-              onClick={sendSimpleTestMail}
+              onClick={handleSendTestEmail}
               disabled={loading}
               className={`w-full inline-flex items-center justify-center px-6 py-3 rounded-md transition-colors ${
                 loading ? 'bg-gray-600 cursor-not-allowed' : 'bg-cyan-600 hover:bg-cyan-700'
