@@ -81,12 +81,6 @@ export default function AdminLayout({
 
             {/* Sağ Taraf - Search ve User Menu */}
             <div className="flex items-center space-x-4">
-              {/* Admin Badge */}
-              <div className="hidden md:flex items-center px-3 py-1.5 bg-gray-700/50 border border-gray-600/50 rounded-lg">
-                <FaShieldAlt className="h-4 w-4 text-red-400 mr-2" />
-                <span className="text-sm font-medium text-gray-300">Admin Mode</span>
-              </div>
-              
               {/* Kullanıcı Menüsü */}
               <div className="flex items-center bg-gray-700/30 rounded-xl p-1">
                 <UserMenu />
