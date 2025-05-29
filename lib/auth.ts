@@ -3,6 +3,14 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from '@/lib/prisma'
 import { compare } from 'bcrypt'
 
+// Admin kullanıcıları listesi
+const ADMIN_EMAILS = [
+  'fevziyenurksbr1@gmail.com',
+  'fevziyenur@icloud.com',
+  'demo@cyberly.com',
+  'admin@example.com'
+];
+
 export const authOptions: NextAuthOptions = {
   session: {
     strategy: 'jwt',
@@ -14,7 +22,7 @@ export const authOptions: NextAuthOptions = {
     signOut: '/cikis'
   },
   debug: process.env.NODE_ENV === 'development',
-  secret: process.env.NEXTAUTH_SECRET || 'sibergercek-gizli-anahtar',
+  secret: process.env.NEXTAUTH_SECRET || 'sibergercek-gizli-anahtar-super-guvenli-2025',
   providers: [
     CredentialsProvider({
       name: 'credentials',
@@ -23,11 +31,14 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Şifre', type: 'password' }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error('Geçersiz giriş bilgileri')
-        }
-
         try {
+          if (!credentials?.email || !credentials?.password) {
+            console.error('Missing credentials')
+            return null
+          }
+
+          console.log('Attempting to authenticate user:', credentials.email)
+
           const user = await prisma.user.findUnique({
             where: {
               email: credentials.email
@@ -35,42 +46,57 @@ export const authOptions: NextAuthOptions = {
           })
 
           if (!user) {
-            throw new Error('Kullanıcı bulunamadı')
+            console.error('User not found:', credentials.email)
+            return null
           }
 
-          // E-posta doğrulama kontrolünü kaldırdık - artık tüm kullanıcılar giriş yapabilir
-          // Gelecekte yeni kayıt olan kullanıcılar için e-posta doğrulama sistemi ayrı olarak işlenecek
+          console.log('User found, checking password...')
 
           const isPasswordValid = await compare(credentials.password, user.password)
 
           if (!isPasswordValid) {
-            throw new Error('Şifre hatalı')
+            console.error('Invalid password for user:', credentials.email)
+            return null
           }
+
+          console.log('Authentication successful for user:', credentials.email)
+
+          // Admin kontrolü - hem veritabanından hem sabit listeden
+          const isAdmin = user.isAdmin || ADMIN_EMAILS.includes(user.email);
+          
+          console.log(`Admin durumu: ${user.email} -> ${isAdmin} (DB: ${user.isAdmin}, Liste: ${ADMIN_EMAILS.includes(user.email)})`);
 
           return {
             id: user.id,
             email: user.email,
             name: user.name || user.email.split('@')[0],
-            role: user.role || 'USER',
-            isAdmin: user.isAdmin || false
+            role: isAdmin ? 'ADMIN' : (user.role || 'USER'),
+            isAdmin: isAdmin
           }
         } catch (error) {
-          console.error('Auth hatası:', error)
-          throw error
+          console.error('Auth error details:', error)
+          return null
         }
       }
     })
   ],
   callbacks: {
     async session({ token, session }) {
-      if (token && session.user) {
-        session.user.id = token.id
-        session.user.name = token.name || session.user.email.split('@')[0]
-        session.user.email = token.email || session.user.email
-        session.user.role = token.role
-        session.user.isAdmin = token.isAdmin
+      try {
+        if (token && session.user) {
+          session.user.id = token.id
+          session.user.name = token.name || session.user.email?.split('@')[0]
+          session.user.email = token.email || session.user.email
+          session.user.role = token.role
+          session.user.isAdmin = token.isAdmin
+          
+          console.log(`Session callback - User: ${session.user.email}, isAdmin: ${session.user.isAdmin}`);
+        }
+        return session
+      } catch (error) {
+        console.error('Session callback error:', error)
+        return session
       }
-      return session
     },
     async jwt({ token, user }) {
       try {
@@ -79,6 +105,8 @@ export const authOptions: NextAuthOptions = {
           token.id = user.id
           token.role = user.role
           token.isAdmin = user.isAdmin
+          
+          console.log(`JWT callback - User: ${user.email}, isAdmin: ${user.isAdmin}`);
           return token
         }
 
@@ -100,15 +128,31 @@ export const authOptions: NextAuthOptions = {
             token.name = dbUser.name || dbUser.email.split('@')[0]
             token.email = dbUser.email
             token.role = dbUser.role || 'USER'
-            token.isAdmin = dbUser.isAdmin || false
+            // Admin kontrolü - hem veritabanından hem sabit listeden
+            const isAdmin = dbUser.isAdmin || ADMIN_EMAILS.includes(dbUser.email);
+            token.isAdmin = isAdmin
+            
+            console.log(`JWT refresh - User: ${dbUser.email}, isAdmin: ${isAdmin}`);
           }
         }
 
         return token
       } catch (error) {
-        console.error('JWT callback hatası:', error)
+        console.error('JWT callback error:', error)
         return token
       }
+    }
+  },
+  // Add error handling
+  events: {
+    async signIn({ user, account, profile }) {
+      console.log('User signed in:', user.email, 'isAdmin:', user.isAdmin)
+    },
+    async signOut({ session, token }) {
+      console.log('User signed out')
+    },
+    async session({ session, token }) {
+      // Silent session events
     }
   }
 }

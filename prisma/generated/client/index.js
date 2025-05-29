@@ -176,7 +176,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "C:\\Users\\mikai\\OneDrive\\Masaüstü\\sibergercek\\prisma\\generated\\client",
+      "value": "C:\\Users\\Nur\\OneDrive\\Belgeler\\GitHub\\siberson\\prisma\\generated\\client",
       "fromEnvVar": null
     },
     "config": {
@@ -190,7 +190,7 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "C:\\Users\\mikai\\OneDrive\\Masaüstü\\sibergercek\\prisma\\schema.prisma",
+    "sourceFilePath": "C:\\Users\\Nur\\OneDrive\\Belgeler\\GitHub\\siberson\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
@@ -204,7 +204,6 @@ const config = {
     "db"
   ],
   "activeProvider": "sqlite",
-  "postinstall": false,
   "inlineDatasources": {
     "db": {
       "url": {

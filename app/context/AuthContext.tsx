@@ -2,7 +2,7 @@
 
 import { createContext, useState, useEffect, useContext, ReactNode, useRef } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { jwtDecode } from 'jwt-decode';
+import { signIn, signOut, useSession } from 'next-auth/react';
 
 // Kullanıcı tipi
 export type User = {
@@ -77,50 +77,11 @@ const storeUser = (user: User | null): void => {
   }
 };
 
-// Cookie alıcı (istemci tarafında çalışır)
-const getCookie = (name: string): string | null => {
-  if (typeof window === 'undefined') return null;
-  
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) {
-    const part = parts.pop();
-    if (part) {
-      return part.split(';').shift() || null;
-    }
-  }
-  return null;
-};
-
-// JWT token çözümleyici
-const parseJwt = (token: string) => {
-  try {
-    return jwtDecode<{
-      userId: string;
-      email: string;
-      role: string;
-      exp: number;
-    }>(token);
-  } catch (e) {
-    console.error('Token çözümleme hatası:', e);
-    return null;
-  }
-};
-
-// Token geçerli mi kontrol et
-const isTokenValid = (token: string): boolean => {
-  const decoded = parseJwt(token);
-  if (!decoded) return false;
-  
-  // Süre kontrolü
-  const currentTime = Date.now() / 1000;
-  return decoded.exp > currentTime;
-};
-
 // AuthProvider bileşeni
 export function AuthProvider({ children }: { children: ReactNode }) {
   // Router tanımla
   const router = useRouter();
+  const { data: session, status } = useSession();
   
   // LocalStorage'dan başlangıç kullanıcı durumu
   const [user, setUser] = useState<User | null>(() => getStoredUser());
@@ -129,9 +90,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const searchParams = useSearchParams();
 
   // Kullanıcı durumu değiştiğinde LocalStorage'ı güncelle
-  // Ancak useEffect her render'da çalışmayı önleyeceğiz
   const userRef = useRef<User | null>(user);
   
+  // NextAuth session değişikliklerini dinle
+  useEffect(() => {
+    if (status === 'loading') {
+      setLoading(true);
+      return;
+    }
+
+    if (status === 'authenticated' && session?.user) {
+      // NextAuth session'ından kullanıcı bilgilerini al
+      const sessionUser: User = {
+        id: session.user.id || '',
+        email: session.user.email || '',
+        name: session.user.name || '',
+        role: session.user.role || 'USER',
+        isAdmin: session.user.isAdmin || false
+      };
+
+      setUser(sessionUser);
+      storeUser(sessionUser);
+      setLoading(false);
+    } else if (status === 'unauthenticated') {
+      setUser(null);
+      storeUser(null);
+      setLoading(false);
+    }
+  }, [session, status]);
+
   // Sadece kullanıcı değiştiğinde etkileyecek şekilde güncelle
   useEffect(() => {
     // userRef'ten farklıysa güncelle
@@ -141,134 +128,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  // Sayfa yüklendiğinde oturum durumunu kontrol et
-  useEffect(() => {
-    const checkUserSession = async () => {
-      try {
-        // Eğer kullanıcı zaten varsa tekrar kontrol etmeye gerek yok
-        if (user) {
-          setLoading(false);
-          return;
-        }
-
-        // LocalStorage'daki kullanıcı bilgisini kontrol et
-        const storedUser = getStoredUser();
-        if (storedUser) {
-          // Kullanıcı bilgisi localStorage'da varsa doğrudan kullan
-          setUser(storedUser);
-          setLoading(false);
-          return;
-        }
-
-        const isAuthenticated = await checkAuth();
-        
-        // Callback URL'i kontrol et
-        const callbackUrl = searchParams?.get('callbackUrl');
-        
-        // Kullanıcı giriş yapmış ve bir callback URL varsa, pathname'e bakmaksızın yönlendir
-        if (isAuthenticated && callbackUrl && callbackUrl !== pathname) {
-          router.push(decodeURIComponent(callbackUrl));
-        }
-      } catch (error) {
-        console.error('Oturum kontrolü hatası:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkUserSession();
-  }, [pathname, router, searchParams, user]);
-
   // Kullanıcı oturumunu kontrol et
   const checkAuth = async (): Promise<boolean> => {
     try {
-      // LocalStorage'da oturum varsa kontrol et
+      // NextAuth session durumunu kontrol et
+      if (status === 'authenticated' && session?.user) {
+        return true;
+      }
+      
+      // LocalStorage'da kullanıcı bilgisi varsa kontrol et
       const storedUser = getStoredUser();
-      if (storedUser) {
-        // Sadece istemci tarafı doğrulama yaparak işlemi hızlandır
+      if (storedUser && status !== 'unauthenticated') {
         setUser(storedUser);
         return true;
       }
       
-      // İstemci tarafında cookie kontrolü yap
-      const token = getCookie('auth_token');
-      
-      if (!token) {
-        setUser(null);
-        storeUser(null);
-        return false;
-      }
-      
-      // Token geçerliliğini istemci tarafında kontrol et
-      if (!isTokenValid(token)) {
-        setUser(null);
-        storeUser(null);
-        return false;
-      }
-      
-      // Token geçerli, sunucu doğrulamasına git
-      try {
-        const controller = new AbortController();
-        // 10 saniye timeout ekle
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-        
-        const response = await fetch('/api/auth/session', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          },
-          credentials: 'include',
-          cache: 'no-store',
-          mode: 'same-origin', // CORS hatalarını önlemek için
-          signal: controller.signal // timeout için
-        });
-        
-        // Timeout'u temizle
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          setUser(null);
-          storeUser(null);
-          return false;
-        }
-        
-        // JSON parse hatalarını yakala
-        let data;
-        try {
-          data = await response.json();
-        } catch (parseError) {
-          setUser(null);
-          storeUser(null);
-          return false;
-        }
-        
-        if (data.user) {
-          // Kullanıcı bilgisini güncelle
-          setUser(data.user);
-          storeUser(data.user);
-          return true;
-        }
-      } catch (fetchError) {
-        console.error('Oturum fetch hatası:', fetchError);
-        
-        // AbortError özel olarak işle - timeout durumunda
-        if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
-          console.warn('Oturum doğrulama isteği zaman aşımına uğradı');
-        }
-        
-        // Fetch hatası durumunda - bağlantı veya ağ problemi olabilir
-        // Daha önce depolanmış kullanıcı bilgisi varsa, o bilgileri geçici olarak koru
-        const existingUser = getStoredUser();
-        if (existingUser) {
-          setUser(existingUser);
-          return true; // Ağ hatası olsa bile kullanıcı bilgisi varsa oturumu açık tut
-        }
-      }
-      
-      // Sunucu tarafından doğrulama yapılamadıysa kullanıcı state'ini temizle
       setUser(null);
       storeUser(null);
       return false;
@@ -280,75 +154,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Giriş fonksiyonu
+  // Giriş fonksiyonu - NextAuth signIn kullan
   const login = async (email: string, password: string): Promise<void> => {
     setLoading(true);
     try {
-      // Ağ hatalarını yakalamak için try-catch
-      try {
-        const response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          },
-          body: JSON.stringify({ email, password }),
-          credentials: 'include', // Cookie'ler için
-          cache: 'no-store',
-          mode: 'same-origin' // CORS hatalarını önlemek için
-        });
+      console.log('NextAuth signIn başlatılıyor:', email);
+      
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false, // Otomatik yönlendirmeyi kapat
+      });
 
-        // Response tipi kontrolü
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error('Sunucu geçersiz yanıt döndürdü. Lütfen daha sonra tekrar deneyin.');
-        }
+      if (result?.error) {
+        throw new Error(result.error);
+      }
 
-        // JSON parse hatalarını yakalamak için try-catch
-        let data;
-        try {
-          data = await response.json();
-        } catch (parseError) {
-          throw new Error('Sunucu yanıtı işlenemedi. Lütfen daha sonra tekrar deneyin.');
-        }
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Giriş yapılırken bir hata oluştu');
-        }
-
-        // Kullanıcı bilgilerini doğrudan yanıttan al
-        if (data.user) {
-          setUser(data.user);
-          
-          // Token'ı localStorage'a kaydet
-          if (data.token) {
-            localStorage.setItem('cyberly_token', data.token);
-          }
-          
-          // Kullanıcıyı localStorage'a kaydetme işlemini güçlendirelim
-          try {
-            // Önce localStorage'ı temizle
-            localStorage.removeItem(USER_STORAGE_KEY);
-            // Sonra yeni kullanıcı bilgilerini kaydet
-            localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user));
-            
-            // Kullanıcı state'ini güncelle
-            storeUser(data.user);
-          } catch (storageError) {
-            console.error('LocalStorage kayıt hatası:', storageError);
-          }
-          
-          // Navbar'ı ve diğer bileşenleri bilgilendir
-          if (typeof window !== 'undefined') {
-            // Olay yayınla - hızlı güncelleme için
-            const authEvent = new CustomEvent(AUTH_CHANGE_EVENT, { 
-              detail: { user: data.user, loggedIn: true } 
-            });
-            window.dispatchEvent(authEvent);
-          }
-          
+      if (result?.ok) {
+        console.log('NextAuth signIn başarılı');
+        
+        // Session yenilenmesini bekle
+        setTimeout(() => {
           // Callback URL varsa doğrudan yönlendir, yoksa ana sayfaya
           const callbackUrl = searchParams?.get('callbackUrl');
           
@@ -356,94 +182,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             try {
               router.push(decodeURIComponent(callbackUrl));
             } catch (navigateError) {
-              // Hata durumunda alternatif olarak window.location kullan
               window.location.href = decodeURIComponent(callbackUrl);
             }
           } else {
-            // Ana sayfaya yönlendir
             try {
               router.push('/');
             } catch (navigateError) {
-              // Hata durumunda alternatif olarak window.location kullan
               window.location.href = '/';
             }
           }
-        } else {
-          // Oturum durumunu kontrol et
-          await checkAuth();
-        }
-      } catch (fetchError) {
-        // Ağ hatalarını özel olarak işle
-        if (fetchError instanceof TypeError && fetchError.message.includes('fetch')) {
-          throw new Error('Sunucuya bağlanılamıyor. Lütfen internet bağlantınızı kontrol edin.');
-        }
-        
-        // Diğer hataları yeniden fırlat
-        throw fetchError;
+        }, 100);
+      } else {
+        throw new Error('Giriş işlemi başarısız oldu');
       }
     } catch (error) {
+      console.error('Login hatası:', error);
       throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  // Çıkış işlemi
+  // Çıkış işlemi - NextAuth signOut kullan
   const logout = async (): Promise<void> => {
     setLoading(true);
     
     try {
-      // LocalStorage temizliği - bu kısmı async/await dışında tut ki hızlıca çalışsın
+      // LocalStorage temizliği
       if (typeof window !== 'undefined') {
-        // Kullanıcı verilerini temizle
         localStorage.removeItem(USER_STORAGE_KEY);
         localStorage.removeItem('cyberly_token');
-        // Diğer muhtemel storage öğelerini temizle
         sessionStorage.removeItem(USER_STORAGE_KEY);
         
-        // Cookie'yi doğrudan temizle - ekstra önlem
-        document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        
-        // Olay yayınla - hızlı güncelleme için
+        // Olay yayınla
         const authEvent = new CustomEvent(AUTH_CHANGE_EVENT, { 
           detail: { user: null, loggedIn: false } 
         });
         window.dispatchEvent(authEvent);
-        
-        // Giriş sayfasına yönlendirme
-        try {
-          router.push('/giris');
-        } catch (routerError) {
-          window.location.href = '/giris';
-        }
       }
       
       // State'i hemen güncelle
       setUser(null);
       
-      try {
-        // API üzerinden çıkış işlemi - token cookie'sini temizler
-        const response = await fetch('/api/auth/logout', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-        });
-      } catch (apiError) {
-        // API hatası olsa bile kullanıcı çıkış yapmış olacak
-      }
+      // NextAuth signOut
+      await signOut({
+        redirect: false
+      });
+      
+      // Giriş sayfasına yönlendir
+      router.push('/giris');
     } catch (error) {
-      // Hata durumunda da temizlik yapalım
+      console.error('Logout hatası:', error);
+      // Hata durumunda da temizlik yap
       setUser(null);
       storeUser(null);
       
       if (typeof window !== 'undefined') {
         localStorage.removeItem(USER_STORAGE_KEY);
         localStorage.removeItem('cyberly_token');
-        document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        
-        // Hata durumunda da giriş sayfasına yönlendir
         window.location.href = '/giris';
       }
     } finally {
@@ -453,7 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const contextValue: AuthContextType = {
     user,
-    loading,
+    loading: loading || status === 'loading',
     login,
     logout,
     checkAuth,

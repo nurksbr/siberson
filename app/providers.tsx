@@ -4,7 +4,7 @@ import { SessionProvider } from 'next-auth/react'
 import { ErrorBoundary } from 'react-error-boundary'
 
 // Hata işleme bileşeni
-function ErrorFallback({ error, resetErrorBoundary }) {
+function ErrorFallback({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) {
   return (
     <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-md my-4 text-red-700 dark:text-red-300">
       <p className="font-bold">Bir hata oluştu:</p>
@@ -28,7 +28,11 @@ export function NextAuthProvider({ children }: { children: React.ReactNode }) {
         console.log('Hata sıfırlanıyor')
       }}
     >
-      <SessionProvider refetchInterval={0} refetchOnWindowFocus={false}>
+      <SessionProvider 
+        refetchInterval={60}  // Her 60 saniyede bir session'ı kontrol et
+        refetchOnWindowFocus={true}  // Pencere odaklandığında session'ı kontrol et
+        refetchWhenOffline={false}
+      >
         {children}
       </SessionProvider>
     </ErrorBoundary>
