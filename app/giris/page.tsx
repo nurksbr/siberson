@@ -76,9 +76,11 @@ export default function LoginPage() {
       setTimeout(() => {
         router.push(callbackUrl)
       }, 1000)
-    } catch (error: any) {
-      console.error('Giriş işlemi sırasında hata:', error)
-      setLoginError(error.message || 'Giriş işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.')
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Giriş işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.';
+      setLoginError(errorMessage)
     } finally {
       setIsLoading(false)
     }

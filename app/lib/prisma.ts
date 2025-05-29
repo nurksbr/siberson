@@ -39,7 +39,7 @@ try {
   // Bu sayede uygulamanın çökmesini engelliyoruz
   console.log('Yedek (mock) Prisma client oluşturuluyor');
   
-  // @ts-ignore - Bu bir geçici çözüm, TS hata vermesi normal
+  // @ts-expect-error - Bu bir geçici çözüm, TS hata vermesi normal
   prisma = {
     // Temel işlemleri taklit eden mock metotlar
     $connect: () => Promise.resolve(),

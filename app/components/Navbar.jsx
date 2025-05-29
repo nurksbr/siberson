@@ -28,6 +28,11 @@ const USER_LINKS = [
   { name: 'Eğitimlerim', path: '/egitimlerim', icon: <FaGraduationCap className="inline-block mr-1" /> },
 ]
 
+// Admin kullanıcıları için ek linkler
+const ADMIN_LINKS = [
+  { name: 'Admin Paneli', path: '/admin-panel', icon: <FaShieldAlt className="inline-block mr-1" />, adminOnly: true },
+]
+
 function Navbar() {
   // useAuth hook'u ile user ve diğer fonksiyonları al
   const { user, loading, logout, checkAuth } = useAuth();
@@ -364,6 +369,26 @@ function Navbar() {
                     )
                   })}
                   
+                  {/* Admin kullanıcıları için admin linkler */}
+                  {isLoggedIn && currentUser?.role === 'ADMIN' && ADMIN_LINKS.map((link) => {
+                    const isActive = isLinkActive(link.path)
+                    return (
+                      <Link 
+                        key={link.path}
+                        href={link.path} 
+                        prefetch={false}
+                        className={`flex items-center px-2 py-1.5 text-sm font-semibold hover:bg-gray-800/30 hover:text-red-400 transition-colors rounded-md ${
+                          isActive ? 'text-red-400 bg-gray-800/30' : 'text-red-300'
+                        }`}
+                      >
+                        <span className="flex items-center">
+                          {link.icon}
+                          {link.name}
+                        </span>
+                      </Link>
+                    )
+                  })}
+                  
                   {/* Kullanıcı giriş yapmadıysa giriş/kayıt butonları göster */}
                   {!isLoggedIn && (
                     <>
@@ -472,6 +497,27 @@ function Navbar() {
                     prefetch={false}
                     className={`flex items-center block px-2 py-1 rounded-md text-sm font-semibold hover:bg-gray-800/30 hover:text-cyan-400 transition-colors ${
                       isMobileUserLinkActive ? 'text-cyan-400 bg-gray-800/30' : 'text-white'
+                    }`}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <span className="flex items-center">
+                      {link.icon}
+                      {link.name}
+                    </span>
+                  </Link>
+                )
+              })}
+              
+              {/* Admin kullanıcıları için admin linkler - Mobile */}
+              {isLoggedIn && currentUser?.role === 'ADMIN' && ADMIN_LINKS.map((link) => {
+                const isMobileAdminLinkActive = isLinkActive(link.path)
+                return (
+                  <Link 
+                    key={link.path}
+                    href={link.path} 
+                    prefetch={false}
+                    className={`flex items-center block px-2 py-1 rounded-md text-sm font-semibold hover:bg-gray-800/30 hover:text-red-400 transition-colors ${
+                      isMobileAdminLinkActive ? 'text-red-400 bg-gray-800/30' : 'text-red-300'
                     }`}
                     onClick={() => setIsMenuOpen(false)}
                   >

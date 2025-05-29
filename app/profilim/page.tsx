@@ -6,7 +6,7 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { FaChevronDown, FaChevronUp, FaLinkedin, FaGithub, FaTwitter, FaGlobe, FaGraduationCap, FaBriefcase, FaMapMarkerAlt, FaEnvelope, FaPhone, FaUser, FaAward, FaCode } from 'react-icons/fa'
+import { FaChevronDown, FaChevronUp, FaLinkedin, FaGithub, FaTwitter, FaGlobe, FaGraduationCap, FaBriefcase, FaMapMarkerAlt, FaEnvelope, FaPhone, FaUser, FaAward, FaCode, FaUserEdit } from 'react-icons/fa'
 
 // Direkt erişim kontrolü
 if (typeof window !== 'undefined') {
