@@ -563,8 +563,8 @@ export default function AdminPanel() {
                         <p className="text-sm text-white group-hover:text-gray-200 transition-colors leading-relaxed">{activity.message}</p>
                         <p className="text-xs text-gray-400 mt-1 bg-gray-800 inline-block px-2 py-1 rounded">
                           {activity.timestamp.toLocaleString('tr-TR')}
-                        </p>
-                      </div>
+        </p>
+      </div>
                     </div>
                   ))
                 ) : (
@@ -781,8 +781,8 @@ export default function AdminPanel() {
                   </label>
                 </div>
               </div>
-            </div>
-            
+      </div>
+
             {/* Tehlikeli İşlemler */}
             <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-xl">
               <div className="flex items-center mb-6">

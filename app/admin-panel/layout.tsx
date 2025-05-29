@@ -57,25 +57,17 @@ export default function AdminLayout({
           <div className="flex h-16 items-center justify-between px-6">
             {/* Logo ve Başlık */}
             <div className="flex items-center">
-              <Link href="/" className="flex items-center mr-6 hover:opacity-80 transition-opacity">
-                <FaShieldAlt className="h-6 w-6 text-cyan-500" />
-                <span className="ml-2 text-lg font-bold text-white">CYBERLY</span>
-              </Link>
-              
               {/* Geri Dönme Butonu */}
-              <Link 
-                href="/" 
-                className="flex items-center px-3 py-2 mr-4 bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600/50 hover:border-gray-500/50 rounded-lg transition-all duration-200 group"
-                title="Ana siteye dön"
-              >
-                <FaArrowLeft className="h-4 w-4 text-gray-400 group-hover:text-cyan-400 mr-2 transition-colors" />
-                <FaHome className="h-4 w-4 text-gray-400 group-hover:text-cyan-400 sm:mr-2 transition-colors" />
-                <span className="hidden sm:block text-sm font-medium text-gray-300 group-hover:text-white transition-colors">Ana Siteye Dön</span>
-              </Link>
-              
-              <div className="h-6 w-px bg-gray-600 mr-6"></div>
               <div className="flex items-center">
-                <h1 className="text-lg font-semibold text-gray-300">Admin Paneli</h1>
+                <Link 
+                  href="/" 
+                  className="flex items-center px-3 py-2 bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600/50 hover:border-gray-500/50 rounded-lg transition-all duration-200 group"
+                  title="Ana siteye dön"
+                >
+                  <FaArrowLeft className="h-4 w-4 text-gray-400 group-hover:text-cyan-400 mr-2 transition-colors" />
+                  <FaHome className="h-4 w-4 text-gray-400 group-hover:text-cyan-400 sm:mr-2 transition-colors" />
+                  <span className="hidden sm:block text-sm font-medium text-gray-300 group-hover:text-white transition-colors">Ana Siteye Dön</span>
+                </Link>
               </div>
             </div>
 
