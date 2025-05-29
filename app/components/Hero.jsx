@@ -298,14 +298,6 @@ function Hero() {
                 <div className="bg-gray-900/80 backdrop-blur-sm py-2 px-4 rounded-md border border-cyan-700/50">
                   <h2 className="text-lg font-bold text-cyan-300">CYBERLY TEHDİT HARİTASI</h2>
                 </div>
-                <div className="flex space-x-2">
-                  <button className="bg-gray-900/80 backdrop-blur-sm py-1 px-3 rounded-md border border-cyan-700/50 text-cyan-300 text-sm">
-                    Küre Görünümü
-                  </button>
-                  <button className="bg-gray-900/80 backdrop-blur-sm py-1 px-3 rounded-md border border-cyan-700/50 text-cyan-300 text-sm">
-                    Dünya Görünümü
-                  </button>
-                </div>
               </div>
               
               {/* Sol İstatistik Paneli */}
